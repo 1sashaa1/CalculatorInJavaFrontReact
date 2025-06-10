@@ -1,45 +1,206 @@
+/* Основные стили калькулятора */
+.calculator-container {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.calculator-card {
+    background: linear-gradient(145deg, #f8f9fa, #e9ecef);
+    border-radius: 20px !important;
+    overflow: hidden;
+}
+
+.calculator-title {
+    color: #3a7bd5 !important;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Дисплей калькулятора */
 .calculator-display {
-    min-height: 100px;
-    background: rgba(248, 249, 250, 0.5);
-    backdrop-filter: blur(5px);
+    background: linear-gradient(to right, #2c3e50, #4ca1af) !important;
+    min-height: 80px;
+    box-shadow: inset 0 4px 8px rgba(0,0,0,0.2);
 }
 
-.operation-btn {
-    transition: all 0.2s;
-    min-width: 80px;
+.calculator-input {
+    opacity: 0.8;
+    height: 24px;
 }
 
-.number-btn, .equals-btn, .clear-btn {
-    transition: all 0.2s;
+.calculator-result {
+    letter-spacing: 1px;
+}
+
+/* Кнопки */
+.btn {
+    transition: all 0.2s ease;
     font-weight: 500;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    border: none !important;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 8px rgba(0,0,0,0.15);
+}
+
+.btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.number-btn {
+    background-color: #ffffff;
+    color: #333;
 }
 
 .number-btn:hover {
-    transform: translateY(-2px);
-    background-color: #f8f9fa !important;
+    background-color: #f1f1f1;
+}
+
+.operation-btn {
+    background-color: #6c757d;
+    color: white;
+}
+
+.operation-btn:hover {
+    background-color: #5a6268;
+}
+
+.scientific-btn {
+    background-color: #17a2b8;
+    color: white;
+}
+
+.scientific-btn:hover {
+    background-color: #138496;
+}
+
+.control-btn {
+    color: white;
 }
 
 .equals-btn {
-    background-color: #20c997 !important;
-    border-color: #20c997 !important;
+    background-color: #28a745;
+    color: white;
 }
 
 .equals-btn:hover {
-    background-color: #1aa179 !important;
-    transform: translateY(-2px);
+    background-color: #218838;
+}
+
+/* История */
+.history-card {
+    background: linear-gradient(145deg, #f8f9fa, #e9ecef);
+    border-radius: 20px !important;
 }
 
 .history-list {
     max-height: 300px;
     overflow-y: auto;
-    scrollbar-width: thin;
+    padding-right: 10px;
 }
 
+.history-item {
+    background-color: rgba(248, 249, 250, 0.7);
+    transition: all 0.3s ease;
+}
+
+.history-item:hover {
+    background-color: rgba(233, 236, 239, 0.9);
+    transform: translateX(5px);
+}
+
+/* Полоса прокрутки */
 .history-list::-webkit-scrollbar {
-    width: 5px;
+    width: 8px;
+}
+
+.history-list::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
 }
 
 .history-list::-webkit-scrollbar-thumb {
-    background-color: #dee2e6;
+    background: #888;
     border-radius: 10px;
+}
+
+.history-list::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* Анимации */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.error-alert {
+    animation: fadeIn 0.3s ease;
+    background-color: #dc3545;
+    color: white;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .calculator-card, .history-card {
+        border-radius: 15px !important;
+    }
+
+    .btn {
+        padding: 0.5rem;
+    }
+}
+
+/* Общие стили для кнопок */
+.calculator-keyboard .btn {
+    font-size: 1.5rem;
+    font-weight: 500;
+    transition: all 0.1s ease;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow: none;
+}
+
+/* Стиль при нажатии */
+.calculator-keyboard .btn:active {
+    transform: scale(0.95);
+    opacity: 0.8;
+}
+
+/* Цвета кнопок */
+.calculator-keyboard .btn-dark {
+    background-color: #505050;
+    color: white;
+}
+
+.calculator-keyboard .btn-warning {
+    background-color: #FF9500;
+    color: white;
+}
+
+.calculator-keyboard .btn-success {
+    background-color: #FF9500;
+    color: white;
+}
+
+/* Особый стиль для кнопки "=" */
+.calculator-keyboard .equals-btn {
+    background-color: #FF9500;
+}
+
+/* Убираем скругления */
+.calculator-keyboard .rounded-4 {
+    border-radius: 0 !important;
+}
+
+/* Особый стиль для нуля (занимает 2 колонки) */
+.col-span-2 {
+    grid-column: span 2;
+}
+
+/* Стиль дисплея */
+.calculator-display {
+    background-color: #1C1C1C !important;
+    border-radius: 0 !important;
+    min-height: 100px;
 }

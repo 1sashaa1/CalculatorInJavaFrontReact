@@ -1,39 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import Result from './Result';
-import History from './History';
+import { Container, Row, Col, Card, Alert } from 'react-bootstrap';
 import axios from 'axios';
-import { Button, Form, Container, Row, Col, Card, Alert } from 'react-bootstrap';
 import '../css/Calculator.css';
 
 const Calculator = () => {
-    const [operation, setOperation] = useState(null);
-    const [inputNumbers, setInputNumbers] = useState([]);
+    const [currentInput, setCurrentInput] = useState('0');
     const [result, setResult] = useState('0');
     const [history, setHistory] = useState([]);
     const [error, setError] = useState('');
-    const [availableOperations, setAvailableOperations] = useState([]);
-    const [inputMode, setInputMode] = useState('operation'); // 'operation' или 'numbers'
+    const [storedValue, setStoredValue] = useState(null);
+    const [currentOperation, setCurrentOperation] = useState(null);
+    const [waitingForOperand, setWaitingForOperand] = useState(false);
     const API_URL = '/api/calculator';
 
-    // Количество требуемых чисел для каждой операции
-    const operationRequirements = {
-        'add': 2,
-        'subtract': 2,
-        'multiply': 2,
-        'divide': 2,
-        'sqrt': 1,
-        'pow': 2,
-        'log': 1
-    };
-
-    const fetchOperations = async () => {
-        try {
-            const response = await axios.get(`${API_URL}/operations`);
-            setAvailableOperations(response.data);
-        } catch (err) {
-            console.error('Ошибка при получении операций:', err);
-        }
-    };
+    const basicOperations = ['+', '-', '*', '/', '%', '^'];
+    const scientificOperations = ['sin', 'cos', 'tan', 'atan', 'atan2', 'sqrt', 'log', 'log10', 'exp', 'abs', 'round', 'max', 'min'];
+    const allOperations = [...basicOperations, ...scientificOperations];
 
     const fetchHistory = async () => {
         try {
@@ -44,166 +26,225 @@ const Calculator = () => {
         }
     };
 
-    const handleOperationSelect = (op) => {
-        setOperation(op);
-        setInputNumbers([]);
-        setInputMode('numbers');
+    const clearAll = () => {
+        setCurrentInput('0');
+        setResult('0');
+        setStoredValue(null);
+        setCurrentOperation(null);
+        setWaitingForOperand(false);
         setError('');
     };
 
-    const handleNumberInput = (num) => {
-        if (!operation) return;
+    const clearEntry = () => {
+        setCurrentInput('0');
+        setError('');
+    };
 
-        const requiredNumbers = operationRequirements[operation] || 2;
+    const handleNumber = (number) => {
+        if (waitingForOperand) {
+            setCurrentInput(number);
+            setWaitingForOperand(false);
+        } else {
+            setCurrentInput(currentInput === '0' ? number : currentInput + number);
+        }
+    };
 
-        if (inputNumbers.length < requiredNumbers) {
-            setInputNumbers([...inputNumbers, num]);
+    const handleDecimalPoint = () => {
+        if (waitingForOperand) {
+            setCurrentInput('0.');
+            setWaitingForOperand(false);
+            return;
+        }
+
+        if (!currentInput.includes('.')) {
+            setCurrentInput(currentInput + '.');
+        }
+    };
+
+    const handleOperation = async (op) => {
+        if (scientificOperations.includes(op)) {
+            // Для научных операций сразу выполняем вычисление
+            try {
+                const response = await axios.post(`${API_URL}/calculate`, {
+                    operation: op,
+                    args: [parseFloat(currentInput)]
+                });
+
+                const newResult = response.data.toString();
+                setResult(newResult);
+                setCurrentInput(newResult);
+                setHistory(prev => [...prev, `${op}(${currentInput}) = ${newResult}`]);
+                setWaitingForOperand(true);
+            } catch (err) {
+                setError(err.response?.data?.message || 'Ошибка вычисления');
+            }
+        } else {
+            // Для базовых операций сохраняем операцию и текущее значение
+            if (currentOperation && !waitingForOperand) {
+                calculate();
+            }
+            setStoredValue(parseFloat(currentInput));
+            setCurrentOperation(op);
+            setWaitingForOperand(true);
         }
     };
 
     const calculate = async () => {
-        if (!operation) {
-            setError('Сначала выберите операцию');
-            return;
-        }
-
-        const requiredNumbers = operationRequirements[operation] || 2;
-        if (inputNumbers.length < requiredNumbers) {
-            setError(`Для операции ${operation} нужно ${requiredNumbers} числа`);
-            return;
-        }
+        if (currentOperation === null || storedValue === null) return;
 
         try {
-            const args = inputNumbers.slice(0, requiredNumbers).map(Number);
+            const currentValue = parseFloat(currentInput);
+            let args = [storedValue];
+
+            if (basicOperations.includes(currentOperation)) {
+                args.push(currentValue);
+            }
+
             const response = await axios.post(`${API_URL}/calculate`, {
-                operation: operation,
+                operation: currentOperation,
                 args: args
             });
 
-            setResult(response.data.toString());
-            setHistory(prev => [...prev, `${operation}(${args.join(', ')}) = ${response.data}`]);
-            setError('');
-            resetCalculator();
+            const newResult = response.data.toString();
+            setResult(newResult);
+            setCurrentInput(newResult);
+            setHistory(prev => [...prev,
+                `${currentOperation}(${args.join(', ')}) = ${newResult}`]);
+            setCurrentOperation(null);
+            setStoredValue(null);
+            setWaitingForOperand(true);
         } catch (err) {
             setError(err.response?.data?.message || 'Ошибка вычисления');
         }
     };
 
-    const resetCalculator = () => {
-        setOperation(null);
-        setInputNumbers([]);
-        setInputMode('operation');
-    };
+    const handleSpecialOperation = async (op) => {
+        try {
+            const response = await axios.post(`${API_URL}/calculate`, {
+                operation: op,
+                args: [parseFloat(currentInput)]
+            });
 
-    const renderOperationButtons = () => {
-        return availableOperations.map(op => (
-            <Button
-                key={op}
-                variant={operation === op ? 'primary' : 'outline-primary'}
-                className="m-1 operation-btn"
-                onClick={() => handleOperationSelect(op)}
-            >
-                {op}
-            </Button>
-        ));
-    };
-
-    const renderNumberButtons = () => {
-        return [7, 8, 9, 4, 5, 6, 1, 2, 3, 0, '.'].map(num => (
-            <Button
-                key={num}
-                variant="outline-secondary"
-                className="m-1 number-btn"
-                onClick={() => handleNumberInput(num.toString())}
-            >
-                {num}
-            </Button>
-        ));
+            const newResult = response.data.toString();
+            setResult(newResult);
+            setCurrentInput(newResult);
+            setHistory(prev => [...prev, `${op}(${currentInput}) = ${newResult}`]);
+            setWaitingForOperand(true);
+        } catch (err) {
+            setError(err.response?.data?.message || 'Ошибка вычисления');
+        }
     };
 
     useEffect(() => {
-        fetchOperations();
         fetchHistory();
     }, []);
 
     return (
-        <Container className="mt-5">
+        <Container className="mt-5 calculator-container">
             <Row className="justify-content-md-center">
-                <Col md={6} lg={5} xl={4}>
-                    <Card className="shadow-sm border-0">
+                <Col md={8} lg={7} xl={6}>
+                    <Card className="calculator-card shadow-lg border-0">
                         <Card.Body className="p-4">
-                            <Card.Title className="text-center mb-4 fs-3 fw-bold text-primary">
+                            <Card.Title className="text-center mb-4 fs-3 fw-bold text-primary calculator-title">
                                 Калькулятор
                             </Card.Title>
 
-                            <div className="calculator-display mb-4 p-3 rounded-3 bg-light bg-opacity-10">
-                                <div className="text-muted calculator-input fs-6">
-                                    {operation ? `${operation}(${inputNumbers.join(', ')})` : 'Выберите операцию'}
+                            <div className="calculator-display mb-4 p-3 rounded-4 bg-dark text-white">
+                                <div className="calculator-input fs-6 text-muted">
+                                    {currentOperation ? `${currentOperation}(${storedValue !== null ? storedValue : ''}${currentOperation && basicOperations.includes(currentOperation) ? ', ' + currentInput : ''})` : currentInput}
                                 </div>
-                                <div className="text-end calculator-result fw-bold fs-2 mt-2">
+                                <div className="calculator-result fw-bold fs-2 mt-2 text-end text-light">
                                     {result}
                                 </div>
                             </div>
 
-
-                            {inputMode === 'operation' && (
-                                <div className="d-grid gap-2">
-                                    <div className="d-flex flex-wrap justify-content-center gap-2">
-                                        {availableOperations.map(op => (
+                            <div className="scientific-operations mb-3">
+                                <div className="row row-cols-5 g-2">
+                                    {['sqrt', 'sin', 'cos', 'tan', 'log'].map(op => (
+                                        <div key={op} className="col">
                                             <button
-                                                key={op}
-                                                className={`btn ${operation === op ? 'btn-primary' : 'btn-outline-primary'} rounded-pill px-4 py-2 operation-btn`}
-                                                onClick={() => handleOperationSelect(op)}
+                                                className="btn btn-info rounded-4 w-100 py-2 operation-btn scientific-btn"
+                                                onClick={() => handleSpecialOperation(op)}
                                             >
                                                 {op}
                                             </button>
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="row row-cols-5 g-2 mt-2">
+                                    {['log10', 'exp', 'abs', 'round', 'atan'].map(op => (
+                                        <div key={op} className="col">
+                                            <button
+                                                className="btn btn-info rounded-4 w-100 py-2 operation-btn scientific-btn"
+                                                onClick={() => handleSpecialOperation(op)}
+                                            >
+                                                {op}
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="calculator-keyboard">
+                                {/* Первая строка - специальные кнопки */}
+                                <div className="row row-cols-4 g-2 mb-2">
+                                    <div className="col">
+                                        <button className="btn btn-light rounded-0 w-100 py-3 control-btn" onClick={clearAll}>
+                                            AC
+                                        </button>
+                                    </div>
+                                    <div className="col">
+                                        <button className="btn btn-light rounded-0 w-100 py-3 control-btn" onClick={clearEntry}>
+                                            CE
+                                        </button>
+                                    </div>
+                                    <div className="col">
+                                        <button className="btn btn-light rounded-0 w-100 py-3 operation-btn" onClick={() => handleOperation('%')}>
+                                            %
+                                        </button>
+                                    </div>
+                                    <div className="col">
+                                        <button className="btn btn-warning rounded-0 w-100 py-3 operation-btn" onClick={() => handleOperation('/')}>
+                                            ÷
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Остальные строки */}
+                                {[
+                                    [7, 8, 9, '*'],
+                                    [4, 5, 6, '-'],
+                                    [1, 2, 3, '+'],
+                                    [0, '.', '^', '=']
+                                ].map((row, rowIndex) => (
+                                    <div key={rowIndex} className="row row-cols-4 g-2 mb-2">
+                                        {row.map((item, colIndex) => (
+                                            <div key={colIndex} className="col">
+                                                <button
+                                                    className={`btn rounded-0 w-100 py-3 
+                            ${typeof item === 'number' ? 'btn-dark number-btn' : ''}
+                            ${item === '.' ? 'btn-dark number-btn' : ''}
+                            ${['+', '-', '*', '/', '%', '^'].includes(item) ? 'btn-warning operation-btn' : ''}
+                            ${item === '=' ? 'btn-success equals-btn' : ''}
+                            ${rowIndex === 3 && colIndex === 0 ? 'col-span-2' : ''}
+                        `}
+                                                    onClick={() => {
+                                                        if (typeof item === 'number') handleNumber(item.toString());
+                                                        else if (item === '.') handleDecimalPoint();
+                                                        else if (item === '=') calculate();
+                                                        else handleOperation(item);
+                                                    }}
+                                                >
+                                                    {item === '*' ? '×' : item === '/' ? '÷' : item}
+                                                </button>
+                                            </div>
                                         ))}
                                     </div>
-                                </div>
-                            )}
-
-
-                            {inputMode === 'numbers' && (
-                                <div className="calculator-buttons">
-                                    <div className="d-grid gap-2">
-                                        <div className="row row-cols-4 g-2">
-                                            {[7, 8, 9, 4, 5, 6, 1, 2, 3, 0, '.'].map(num => (
-                                                <div key={num} className="col">
-                                                    <button
-                                                        className="btn btn-light rounded-3 w-100 py-3 number-btn shadow-sm"
-                                                        onClick={() => handleNumberInput(num.toString())}
-                                                    >
-                                                        {num}
-                                                    </button>
-                                                </div>
-                                            ))}
-                                            <div className="col">
-                                                <button
-                                                    className="btn btn-success rounded-3 w-100 py-3 equals-btn shadow-sm"
-                                                    onClick={calculate}
-                                                    disabled={inputNumbers.length < (operationRequirements[operation] || 2)}
-                                                >
-                                                    =
-                                                </button>
-                                            </div>
-                                            <div className="col">
-                                                <button
-                                                    className="btn btn-danger rounded-3 w-100 py-3 clear-btn shadow-sm"
-                                                    onClick={resetCalculator}
-                                                >
-                                                    C
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="text-center mt-3 text-muted small">
-                                        Нужно ввести {operationRequirements[operation] || 2} числа
-                                    </div>
-                                </div>
-                            )}
+                                ))}
+                            </div>
 
                             {error && (
-                                <Alert variant="danger" className="mt-3 rounded-3 border-0 shadow-sm">
+                                <Alert variant="danger" className="mt-3 rounded-4 border-0 error-alert">
                                     {error}
                                 </Alert>
                             )}
@@ -213,26 +254,23 @@ const Calculator = () => {
             </Row>
 
             <Row className="mt-4 justify-content-md-center">
-                <Col md={6} lg={5} xl={4}>
-                    <Card className="shadow-sm border-0">
+                <Col md={8} lg={7} xl={6}>
+                    <Card className="history-card shadow-lg border-0">
                         <Card.Body className="p-4">
                             <Card.Title className="text-center mb-3 fs-4 fw-bold text-primary">
-                                История вычислений
+                                History
                             </Card.Title>
                             <div className="history-list">
                                 {history.length > 0 ? (
                                     history.map((item, index) => (
-                                        <div
-                                            key={index}
-                                            className="py-2 px-3 mb-2 rounded-3 bg-light bg-opacity-10 d-flex justify-content-between"
-                                        >
+                                        <div key={index} className="history-item py-2 px-3 mb-2 rounded-4">
                                             <span className="text-muted">{item.split('=')[0]}</span>
                                             <span className="fw-bold">= {item.split('=')[1]}</span>
                                         </div>
                                     ))
                                 ) : (
                                     <div className="text-center text-muted py-3">
-                                        История пуста
+                                        History is empty
                                     </div>
                                 )}
                             </div>
