@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Alert } from 'react-bootstrap';
 import axios from 'axios';
-import '../css/Calculator.css';
+import '../css/Calculator.scss';
 
 const Calculator = () => {
     const [currentInput, setCurrentInput] = useState('0');
@@ -79,7 +79,6 @@ const Calculator = () => {
                 setError(err.response?.data?.message || 'Ошибка вычисления');
             }
         } else {
-            // Для базовых операций сохраняем операцию и текущее значение
             if (currentOperation && !waitingForOperand) {
                 calculate();
             }
@@ -151,7 +150,13 @@ const Calculator = () => {
 
                             <div className="calculator-display mb-4 p-3 rounded-4 bg-dark text-white">
                                 <div className="calculator-input fs-6 text-muted">
-                                    {currentOperation ? `${currentOperation}(${storedValue !== null ? storedValue : ''}${currentOperation && basicOperations.includes(currentOperation) ? ', ' + currentInput : ''})` : currentInput}
+                                    {
+                                        currentOperation
+                                            ? `${storedValue ?? ''} ${currentOperation}${ // оператор нулевого слияния
+                                                waitingForOperand ? '' : ` ${currentInput}`
+                                            }`
+                                            : currentInput
+                                    }
                                 </div>
                                 <div className="calculator-result fw-bold fs-2 mt-2 text-end text-light">
                                     {result}
@@ -186,7 +191,6 @@ const Calculator = () => {
                             </div>
 
                             <div className="calculator-keyboard">
-                                {/* Первая строка - специальные кнопки */}
                                 <div className="row row-cols-4 g-2 mb-2">
                                     <div className="col">
                                         <button className="btn btn-light rounded-0 w-100 py-3 control-btn" onClick={clearAll}>
@@ -210,7 +214,6 @@ const Calculator = () => {
                                     </div>
                                 </div>
 
-                                {/* Остальные строки */}
                                 {[
                                     [7, 8, 9, '*'],
                                     [4, 5, 6, '-'],
